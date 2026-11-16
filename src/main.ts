@@ -22,6 +22,7 @@ import {
   formatTimeWithMs,
   getFileExtensionForMime,
 } from './utils/format.ts';
+import { initSmartSliders, updateSliderFill } from './utils/smartSlider.ts';
 
 const SETTINGS_KEY = 'noise_recorder_settings_v1';
 
@@ -117,6 +118,7 @@ class NoiseRecorderApp {
     );
 
     this.bindEvents();
+    initSmartSliders();
     this.syncAllControlsFromSettings();
     this.powerSaver.setScreenBrightness(this.settings.screenBrightness);
     this.powerSaver.setStandbyBrightness(this.settings.standbyBrightness);
@@ -811,6 +813,7 @@ class NoiseRecorderApp {
     this.syncScreenBrightnessInputs(this.settings.screenBrightness);
     this.syncStandbyBrightnessInputs(this.settings.standbyBrightness);
     this.syncStandbyTextInputs(this.settings.standbyTextOpacity);
+    document.querySelectorAll<HTMLInputElement>('input[type="range"]').forEach(updateSliderFill);
   }
 
   private syncModeButtons(): void {
@@ -834,9 +837,12 @@ class NoiseRecorderApp {
   }
 
   private syncScreenBrightnessInputs(val: number): void {
-    getEl<HTMLInputElement>('quick-brightness-slider').value = String(val);
-    getEl<HTMLInputElement>('main-brightness-slider').value = String(val);
-    getEl<HTMLInputElement>('setting-main-brightness').value = String(val);
+    const ids = ['quick-brightness-slider', 'main-brightness-slider', 'setting-main-brightness'];
+    for (const id of ids) {
+      const el = getEl<HTMLInputElement>(id);
+      el.value = String(val);
+      updateSliderFill(el);
+    }
     getEl('header-brightness-label').textContent = `${val}%`;
     getEl('quick-brightness-val').textContent = `${val}%`;
     getEl('main-brightness-val').textContent = `${val}%`;
@@ -844,17 +850,24 @@ class NoiseRecorderApp {
   }
 
   private syncStandbyBrightnessInputs(val: number): void {
-    getEl<HTMLInputElement>('standby-brightness-preview-slider').value = String(val);
-    getEl<HTMLInputElement>('setting-standby-brightness').value = String(val);
-    getEl<HTMLInputElement>('standby-brightness-slider').value = String(val);
+    const ids = ['standby-brightness-preview-slider', 'setting-standby-brightness', 'standby-brightness-slider'];
+    for (const id of ids) {
+      const el = getEl<HTMLInputElement>(id);
+      el.value = String(val);
+      updateSliderFill(el);
+    }
     getEl('standby-brightness-preview-val').textContent = `${val}%`;
     getEl('setting-standby-brightness-val').textContent = `${val}%`;
     getEl('standby-brightness-val').textContent = `${val}%`;
   }
 
   private syncStandbyTextInputs(val: number): void {
-    getEl<HTMLInputElement>('standby-text-slider').value = String(val);
-    getEl<HTMLInputElement>('setting-standby-text').value = String(val);
+    const ids = ['standby-text-slider', 'setting-standby-text'];
+    for (const id of ids) {
+      const el = getEl<HTMLInputElement>(id);
+      el.value = String(val);
+      updateSliderFill(el);
+    }
     getEl('standby-text-val').textContent = `${val}%`;
     getEl('setting-standby-text-val').textContent = `${val}%`;
   }
