@@ -16,8 +16,6 @@ export interface AppSettings {
   postRollSec: number;
   autoSegmentMinutes: number;
   screenBrightness: number;
-  standbyBrightness: number;
-  standbyTextOpacity: number;
   facingMode: FacingMode;
 }
 
@@ -68,8 +66,10 @@ export const RESOLUTION_DIMENSIONS: Record<ResolutionPreset, { width: number; he
   '240p': { width: 426, height: 240, label: '240p (極致省電最小檔)' },
 };
 
+export const LOCATION_PRESETS = ['廁所洗手台', '廁所窗戶邊', '客廳朝向隔間牆'] as const;
+
 export const DEFAULT_SETTINGS: AppSettings = {
-  locationLabel: '3F-B室 客廳朝向玄關門',
+  locationLabel: '廁所洗手台',
   recordingMode: 'continuous',
   resolution: '360p',
   fps: 12,
@@ -82,7 +82,5 @@ export const DEFAULT_SETTINGS: AppSettings = {
   postRollSec: 20,
   autoSegmentMinutes: 30,
   screenBrightness: 100,
-  standbyBrightness: 15,
-  standbyTextOpacity: 50,
   facingMode: 'environment',
 };

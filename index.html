@@ -35,9 +35,8 @@
       </header>
 
       <div id="quick-brightness-bar" class="quick-brightness-bar" hidden>
-        <label for="quick-brightness-slider">🔆 主畫面螢幕亮度：<strong id="quick-brightness-val">100%</strong></label>
+        <label for="quick-brightness-slider">🔆 螢幕亮度（調暗即可省電）：<strong id="quick-brightness-val">100%</strong></label>
         <input id="quick-brightness-slider" type="range" min="0" max="100" step="1" value="100" />
-        <button id="btn-quick-standby" type="button" class="btn btn-sm btn-secondary">🌙 省電待機</button>
       </div>
 
       <nav class="tab-nav" role="tablist">
@@ -73,12 +72,19 @@
             </div>
 
             <div class="location-row">
-              <label for="location-label-input">📍 畫面浮水印標籤</label>
+              <label for="location-preset-select">📍 畫面浮水印標籤</label>
+              <select id="location-preset-select">
+                <option value="廁所洗手台">廁所洗手台 (預設)</option>
+                <option value="廁所窗戶邊">廁所窗戶邊</option>
+                <option value="客廳朝向隔間牆">客廳朝向隔間牆</option>
+                <option value="__custom__">✏️ 自訂輸入其他位置...</option>
+              </select>
               <input
                 id="location-label-input"
                 type="text"
                 maxlength="36"
-                placeholder="例如：3F-B室 客廳朝向玄關門"
+                placeholder="輸入自訂位置標籤"
+                hidden
               />
             </div>
 
@@ -107,10 +113,7 @@
               <button id="btn-toggle-record" type="button" class="btn btn-primary btn-lg">
                 🔴 開始蒐證錄影
               </button>
-              <button id="btn-enter-standby" type="button" class="btn btn-dark btn-lg">
-                🌙 省電待機模式 (可調亮度)
-              </button>
-              <button id="btn-simulate-slam" type="button" class="btn btn-accent">
+              <button id="btn-simulate-slam" type="button" class="btn btn-accent btn-lg">
                 💥 模擬關門巨響 (測試觸發)
               </button>
             </div>
@@ -165,18 +168,10 @@
 
               <div class="slider-item">
                 <div class="slider-head">
-                  <label for="main-brightness-slider">主畫面螢幕亮度</label>
+                  <label for="main-brightness-slider">🔆 螢幕亮度 (調暗即可省電)</label>
                   <span id="main-brightness-val">100%</span>
                 </div>
                 <input id="main-brightness-slider" type="range" min="0" max="100" step="1" value="100" />
-              </div>
-
-              <div class="slider-item">
-                <div class="slider-head">
-                  <label for="standby-brightness-preview-slider">待機模式螢幕亮度</label>
-                  <span id="standby-brightness-preview-val">15%</span>
-                </div>
-                <input id="standby-brightness-preview-slider" type="range" min="0" max="100" step="1" value="15" />
               </div>
             </div>
           </div>
@@ -336,26 +331,11 @@
 
               <div class="setting-field">
                 <div class="slider-head">
-                  <label for="setting-main-brightness">主畫面螢幕亮度</label>
+                  <label for="setting-main-brightness">預設螢幕亮度 (調暗即可省電)</label>
                   <span id="setting-main-brightness-val">100%</span>
                 </div>
                 <input id="setting-main-brightness" type="range" min="0" max="100" step="1" value="100" />
-              </div>
-
-              <div class="setting-field">
-                <div class="slider-head">
-                  <label for="setting-standby-brightness">待機模式螢幕亮度</label>
-                  <span id="setting-standby-brightness-val">15%</span>
-                </div>
-                <input id="setting-standby-brightness" type="range" min="0" max="100" step="1" value="15" />
-              </div>
-
-              <div class="setting-field">
-                <div class="slider-head">
-                  <label for="setting-standby-text">待機狀態文字亮度</label>
-                  <span id="setting-standby-text-val">50%</span>
-                </div>
-                <input id="setting-standby-text" type="range" min="10" max="100" step="5" value="50" />
+                <small class="muted-text">調暗至 15% 以下時，連點兩下空白畫面可快速恢復最亮</small>
               </div>
             </div>
 
@@ -371,43 +351,6 @@
           </div>
         </section>
       </main>
-    </div>
-
-    <!-- ADJUSTABLE BRIGHTNESS OLED STANDBY OVERLAY -->
-    <div id="oled-standby-overlay" class="oled-standby-overlay" hidden>
-      <div id="standby-content" class="standby-content">
-        <div id="standby-card" class="standby-card">
-          <div class="standby-status-line">
-            <span id="standby-rec-dot" class="standby-dot"></span>
-            <span id="standby-status-title">噪音記錄器・省電待機中</span>
-          </div>
-          <div id="standby-db-value" class="standby-db">36.0 dB</div>
-          <div id="standby-meta" class="standby-meta">
-            已錄影時間：00:00 ｜ 捕捉巨響：0 次 ｜ 峰值：36.0 dB
-          </div>
-          <p class="standby-hint">連點兩下背景空白處，或點擊下方按鈕即可喚醒完整畫面</p>
-        </div>
-
-        <div class="standby-controls">
-          <div class="standby-presets">
-            <button type="button" class="btn btn-xs btn-dark standby-preset-btn" data-brightness="0">0% 純黑</button>
-            <button type="button" class="btn btn-xs btn-dark standby-preset-btn" data-brightness="15">15% 微亮</button>
-            <button type="button" class="btn btn-xs btn-dark standby-preset-btn" data-brightness="40">40% 低亮</button>
-            <button type="button" class="btn btn-xs btn-dark standby-preset-btn" data-brightness="80">80% 明亮</button>
-          </div>
-          <div class="standby-slider-row">
-            <label for="standby-brightness-slider">🔆 螢幕亮度 <strong id="standby-brightness-val">15%</strong></label>
-            <input id="standby-brightness-slider" type="range" min="0" max="100" step="1" value="15" />
-          </div>
-          <div class="standby-slider-row">
-            <label for="standby-text-slider">🔤 文字亮度 <strong id="standby-text-val">50%</strong></label>
-            <input id="standby-text-slider" type="range" min="10" max="100" step="5" value="50" />
-          </div>
-          <button id="btn-exit-standby" type="button" class="btn btn-secondary btn-block">
-            ☀ 喚醒完整畫面
-          </button>
-        </div>
-      </div>
     </div>
 
     <div id="toast-container" class="toast-container" aria-live="polite"></div>

@@ -850,103 +850,6 @@ input[type='range'][data-dragging='true']::-moz-range-thumb {
   padding: 20px !important;
 }
 
-/* OLED Standby Overlay */
-.oled-standby-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-  background-color: rgba(0, 0, 0, 0.85);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  user-select: none;
-}
-
-.oled-standby-overlay[hidden] {
-  display: none;
-}
-
-.standby-content {
-  width: 100%;
-  max-width: 420px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: 28px;
-  transition: opacity 0.12s linear;
-}
-
-.standby-card {
-  text-align: center;
-  padding: 20px 14px;
-  transition: transform 0.8s ease;
-}
-
-.standby-status-line {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.95rem;
-  color: #cbd5e1;
-  margin-bottom: 10px;
-}
-
-.standby-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: #22c55e;
-}
-
-.standby-dot.recording {
-  background: #ef4444;
-  box-shadow: 0 0 10px rgba(239, 68, 68, 0.9);
-}
-
-.standby-db {
-  font-size: 2.6rem;
-  font-weight: 800;
-  font-family: ui-monospace, monospace;
-  color: #f8fafc;
-}
-
-.standby-meta {
-  font-size: 0.84rem;
-  color: #94a3b8;
-  margin-top: 6px;
-}
-
-.standby-hint {
-  font-size: 0.75rem;
-  color: #64748b;
-  margin-top: 14px;
-}
-
-.standby-controls {
-  background: rgba(15, 23, 42, 0.72);
-  border: 1px solid rgba(51, 65, 85, 0.7);
-  border-radius: 14px;
-  padding: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.standby-presets {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
-}
-
-.standby-slider-row {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 0.82rem;
-  color: #e2e8f0;
-}
-
 .toast-container {
   position: fixed;
   bottom: 16px;
@@ -994,7 +897,6 @@ input[type='range'][data-dragging='true']::-moz-range-thumb {
   #tab-monitor,
   #tab-review,
   #tab-export > .card:not(.report-preview-card),
-  .oled-standby-overlay,
   .toast-container {
     display: none !important;
   }

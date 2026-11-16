@@ -5,7 +5,7 @@ import { PowerSaver } from './power/powerSaver.ts';
 import { CanvasCompositor } from './recorder/canvasCompositor.ts';
 import { RecordingManager } from './recorder/recordingManager.ts';
 import { EvidenceStore } from './storage/evidenceStore.ts';
-import { DEFAULT_SETTINGS, RESOLUTION_DIMENSIONS } from './types.ts';
+import { DEFAULT_SETTINGS, LOCATION_PRESETS, RESOLUTION_DIMENSIONS } from './types.ts';
 import type {
   AppSettings,
   AudioTelemetry,
@@ -31,7 +31,11 @@ function loadSettings(): AppSettings {
     const raw = localStorage.getItem(SETTINGS_KEY);
     if (!raw) return { ...DEFAULT_SETTINGS };
     const parsed = JSON.parse(raw) as Partial<AppSettings>;
-    return { ...DEFAULT_SETTINGS, ...parsed };
+    const merged: AppSettings = { ...DEFAULT_SETTINGS, ...parsed };
+    if (!merged.locationLabel || merged.locationLabel === '3F-B室 客廳朝向玄關門') {
+      merged.locationLabel = DEFAULT_SETTINGS.locationLabel;
+    }
+    return merged;
   } catch {
     return { ...DEFAULT_SETTINGS };
   }
@@ -68,7 +72,6 @@ class NoiseRecorderApp {
   private recStartedAt: number | null = null;
   private recTimerInterval: number | null = null;
   private sessionEvents: NoiseEvent[] = [];
-  private latestTelemetry: AudioTelemetry | null = null;
 
   private allSessions: RecordingSession[] = [];
   private allEvents: NoiseEvent[] = [];
@@ -104,25 +107,19 @@ class NoiseRecorderApp {
       },
     );
 
-    this.powerSaver = new PowerSaver(
-      getEl('global-dimmer'),
-      getEl('oled-standby-overlay'),
-      getEl('standby-card'),
-      getEl('standby-content'),
-      {
-        onWakeLockChange: (active, supported) => this.renderWakeLockBadge(active, supported),
-        onScreenBrightnessChange: (val) => this.syncScreenBrightnessInputs(val),
-        onStandbyBrightnessChange: (val) => this.syncStandbyBrightnessInputs(val),
-        onStandbyTextOpacityChange: (val) => this.syncStandbyTextInputs(val),
+    this.powerSaver = new PowerSaver(getEl('global-dimmer'), {
+      onWakeLockChange: (active, supported) => this.renderWakeLockBadge(active, supported),
+      onScreenBrightnessChange: (val) => {
+        this.settings.screenBrightness = val;
+        saveSettings(this.settings);
+        this.syncScreenBrightnessInputs(val);
       },
-    );
+    });
 
     this.bindEvents();
     initSmartSliders();
     this.syncAllControlsFromSettings();
     this.powerSaver.setScreenBrightness(this.settings.screenBrightness);
-    this.powerSaver.setStandbyBrightness(this.settings.standbyBrightness);
-    this.powerSaver.setStandbyTextOpacity(this.settings.standbyTextOpacity);
     this.renderWakeLockBadge(false, this.powerSaver.isWakeLockSupported());
 
     void this.initPipelines();
@@ -158,10 +155,6 @@ class NoiseRecorderApp {
       const bar = getEl('quick-brightness-bar');
       bar.hidden = !bar.hidden;
     });
-    getEl('btn-quick-standby').addEventListener('click', () => {
-      getEl('quick-brightness-bar').hidden = true;
-      this.powerSaver.enterStandbyMode();
-    });
 
     // Camera / Mic controls
     getEl('btn-connect-av').addEventListener('click', () => {
@@ -173,8 +166,21 @@ class NoiseRecorderApp {
       void this.connectRealCameraAndMic();
     });
 
-    // Location label
+    // Location preset dropdown & custom label
+    const locSelect = getEl<HTMLSelectElement>('location-preset-select');
     const locInput = getEl<HTMLInputElement>('location-label-input');
+    locSelect.addEventListener('change', () => {
+      if (locSelect.value === '__custom__') {
+        locInput.hidden = false;
+        locInput.focus();
+      } else {
+        locInput.hidden = true;
+        this.settings.locationLabel = locSelect.value;
+        locInput.value = locSelect.value;
+        saveSettings(this.settings);
+        this.compositor.updateSettings(this.settings);
+      }
+    });
     locInput.addEventListener('input', () => {
       this.settings.locationLabel = locInput.value;
       saveSettings(this.settings);
@@ -202,12 +208,6 @@ class NoiseRecorderApp {
     });
     getEl('btn-finalize-clip-now').addEventListener('click', () => {
       void this.recordingManager.finalizeActiveEventCaptureNow();
-    });
-    getEl('btn-enter-standby').addEventListener('click', () => {
-      this.powerSaver.enterStandbyMode();
-    });
-    getEl('btn-exit-standby').addEventListener('click', () => {
-      this.powerSaver.exitStandbyMode();
     });
     getEl('btn-simulate-slam').addEventListener('click', () => {
       void this.detector.triggerSimulatedSlam(Math.max(82, this.settings.thresholdDb + 15));
@@ -245,43 +245,6 @@ class NoiseRecorderApp {
     bindMainBrightness('quick-brightness-slider');
     bindMainBrightness('main-brightness-slider');
     bindMainBrightness('setting-main-brightness');
-
-    // Standby brightness sliders (monitor tab, settings tab, standby overlay)
-    const bindStandbyBrightness = (id: string): void => {
-      const slider = getEl<HTMLInputElement>(id);
-      slider.addEventListener('input', () => {
-        const val = Number(slider.value);
-        this.settings.standbyBrightness = val;
-        saveSettings(this.settings);
-        this.powerSaver.setStandbyBrightness(val);
-      });
-    };
-    bindStandbyBrightness('standby-brightness-preview-slider');
-    bindStandbyBrightness('setting-standby-brightness');
-    bindStandbyBrightness('standby-brightness-slider');
-
-    // Standby quick preset buttons
-    document.querySelectorAll<HTMLButtonElement>('.standby-preset-btn').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const val = Number(btn.dataset.brightness ?? 15);
-        this.settings.standbyBrightness = val;
-        saveSettings(this.settings);
-        this.powerSaver.setStandbyBrightness(val);
-      });
-    });
-
-    // Standby text opacity sliders
-    const bindStandbyText = (id: string): void => {
-      const slider = getEl<HTMLInputElement>(id);
-      slider.addEventListener('input', () => {
-        const val = Number(slider.value);
-        this.settings.standbyTextOpacity = val;
-        saveSettings(this.settings);
-        this.powerSaver.setStandbyTextOpacity(val);
-      });
-    };
-    bindStandbyText('standby-text-slider');
-    bindStandbyText('setting-standby-text');
 
     // Video compression & calibration settings
     getEl<HTMLSelectElement>('setting-resolution').addEventListener('change', (e) => {
@@ -418,30 +381,23 @@ class NoiseRecorderApp {
     await this.recordingManager.start(mixedStream, this.settings);
   }
 
-  private handleRecordingStateChange(recording: boolean, mode: RecordingMode, startedAt: number | null): void {
-    this.compositor.setRecordingState(recording, mode);
+  private handleRecordingStateChange(recording: boolean, _mode: RecordingMode, startedAt: number | null): void {
+    this.compositor.setRecordingState(recording, _mode);
     const toggleBtn = getEl<HTMLButtonElement>('btn-toggle-record');
     const timerPill = getEl('rec-timer-pill');
-    const standbyDot = getEl('standby-rec-dot');
-    const standbyTitle = getEl('standby-status-title');
 
     if (recording) {
       this.recStartedAt = startedAt ?? Date.now();
       toggleBtn.textContent = '⏹ 停止並保存錄影';
       toggleBtn.classList.add('recording-active');
       timerPill.hidden = false;
-      standbyDot.classList.add('recording');
-      standbyTitle.textContent = mode === 'continuous' ? '噪音記錄器・全程連續蒐證中' : '噪音記錄器・事件觸發待機中';
       this.startRecTimerLoop();
     } else {
       this.recStartedAt = null;
       toggleBtn.textContent = '🔴 開始蒐證錄影';
       toggleBtn.classList.remove('recording-active');
       timerPill.hidden = true;
-      standbyDot.classList.remove('recording');
-      standbyTitle.textContent = '噪音記錄器・省電待機中';
       this.stopRecTimerLoop();
-      this.updateStandbyMeta();
     }
   }
 
@@ -451,7 +407,6 @@ class NoiseRecorderApp {
       if (!this.recStartedAt) return;
       const elapsed = Math.floor((Date.now() - this.recStartedAt) / 1000);
       getEl('rec-timer-pill').textContent = `● REC ${formatDuration(elapsed)}`;
-      this.updateStandbyMeta();
     };
     tick();
     this.recTimerInterval = window.setInterval(tick, 500);
@@ -465,7 +420,6 @@ class NoiseRecorderApp {
   }
 
   private handleTelemetry(t: AudioTelemetry): void {
-    this.latestTelemetry = t;
     this.compositor.updateTelemetry(t);
 
     getEl('val-current-db').textContent = `${t.currentDb.toFixed(1)} dB`;
@@ -492,16 +446,6 @@ class NoiseRecorderApp {
       spikeBadge.className = 'pill pill-ok';
       spikeBadge.textContent = '監測中・環境平穩';
     }
-
-    getEl('standby-db-value').textContent = `${t.currentDb.toFixed(1)} dB`;
-    this.updateStandbyMeta();
-  }
-
-  private updateStandbyMeta(): void {
-    const elapsedSec = this.recStartedAt ? Math.floor((Date.now() - this.recStartedAt) / 1000) : 0;
-    const peak = this.latestTelemetry ? this.latestTelemetry.peakDb.toFixed(1) : '36.0';
-    getEl('standby-meta').textContent =
-      `已錄影時間：${formatDuration(elapsedSec)} ｜ 捕捉巨響：${this.sessionEvents.length} 次 ｜ 峰值：${peak} dB`;
   }
 
   private updateCaptureStatus(text: string, hasPending: boolean): void {
@@ -512,7 +456,6 @@ class NoiseRecorderApp {
   private handleEventCaptured(evt: NoiseEvent): void {
     this.sessionEvents.unshift(evt);
     this.renderLiveEventsFeed();
-    this.updateStandbyMeta();
     this.showToast(`⚠ 已標記突發巨響：${evt.peakDb.toFixed(1)} dB (+${evt.deltaDb.toFixed(1)} dB)`, true);
     void this.refreshStoredData();
   }
@@ -794,7 +737,7 @@ class NoiseRecorderApp {
   }
 
   private syncAllControlsFromSettings(): void {
-    getEl<HTMLInputElement>('location-label-input').value = this.settings.locationLabel;
+    this.syncLocationControls();
     getEl<HTMLInputElement>('threshold-db-slider').value = String(this.settings.thresholdDb);
     getEl<HTMLInputElement>('delta-db-slider').value = String(this.settings.deltaThresholdDb);
 
@@ -811,9 +754,22 @@ class NoiseRecorderApp {
     this.syncThresholdDisplays();
     this.syncEstimatedMb();
     this.syncScreenBrightnessInputs(this.settings.screenBrightness);
-    this.syncStandbyBrightnessInputs(this.settings.standbyBrightness);
-    this.syncStandbyTextInputs(this.settings.standbyTextOpacity);
     document.querySelectorAll<HTMLInputElement>('input[type="range"]').forEach(updateSliderFill);
+  }
+
+  private syncLocationControls(): void {
+    const locSelect = getEl<HTMLSelectElement>('location-preset-select');
+    const locInput = getEl<HTMLInputElement>('location-label-input');
+    const isPreset = (LOCATION_PRESETS as readonly string[]).includes(this.settings.locationLabel);
+    if (isPreset) {
+      locSelect.value = this.settings.locationLabel;
+      locInput.hidden = true;
+      locInput.value = this.settings.locationLabel;
+    } else {
+      locSelect.value = '__custom__';
+      locInput.hidden = false;
+      locInput.value = this.settings.locationLabel;
+    }
   }
 
   private syncModeButtons(): void {
@@ -847,29 +803,6 @@ class NoiseRecorderApp {
     getEl('quick-brightness-val').textContent = `${val}%`;
     getEl('main-brightness-val').textContent = `${val}%`;
     getEl('setting-main-brightness-val').textContent = `${val}%`;
-  }
-
-  private syncStandbyBrightnessInputs(val: number): void {
-    const ids = ['standby-brightness-preview-slider', 'setting-standby-brightness', 'standby-brightness-slider'];
-    for (const id of ids) {
-      const el = getEl<HTMLInputElement>(id);
-      el.value = String(val);
-      updateSliderFill(el);
-    }
-    getEl('standby-brightness-preview-val').textContent = `${val}%`;
-    getEl('setting-standby-brightness-val').textContent = `${val}%`;
-    getEl('standby-brightness-val').textContent = `${val}%`;
-  }
-
-  private syncStandbyTextInputs(val: number): void {
-    const ids = ['standby-text-slider', 'setting-standby-text'];
-    for (const id of ids) {
-      const el = getEl<HTMLInputElement>(id);
-      el.value = String(val);
-      updateSliderFill(el);
-    }
-    getEl('standby-text-val').textContent = `${val}%`;
-    getEl('setting-standby-text-val').textContent = `${val}%`;
   }
 
   private showToast(message: string, isAlert: boolean): void {
