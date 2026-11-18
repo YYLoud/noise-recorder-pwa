@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">噪音記錄器</string>
+    <string name="title_activity_main">噪音記錄器</string>
+    <string name="package_name">com.noiserecorder.evidence</string>
+    <string name="custom_url_scheme">com.noiserecorder.evidence</string>
+</resources>

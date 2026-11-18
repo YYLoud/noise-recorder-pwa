@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#090d16" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="噪音記錄器" />
+    <title>噪音記錄器</title>
+    <link rel="manifest" href="./manifest.json" />
+    <link rel="icon" type="image/svg+xml" href="./icon.svg" />
+    <link rel="apple-touch-icon" href="./icon.svg" />
+    <link rel="stylesheet" href="./src/style.css" />
+  </head>
+  <body>
+    <div id="global-dimmer" aria-hidden="true">
+      <div id="standby-hint-box" class="standby-hint-box">
+        <strong>🌙 黑屏省電待機中</strong>
+        <span>錄影與突波監測持續運作中・連點兩下畫面任意處即可喚醒</span>
+      </div>
+    </div>
+
+    <div id="app-shell">
+      <header class="app-header">
+        <div class="brand-group">
+          <img src="./icon.svg" alt="噪音記錄器" class="brand-icon" />
+          <div>
+            <h1>噪音記錄器</h1>
+            <p class="brand-sub">低功耗影音同步蒐證系統</p>
+          </div>
+        </div>
+        <div class="header-badges">
+          <span id="badge-wakelock" class="pill pill-muted">螢幕鎖定：待命</span>
+          <span id="badge-storage" class="pill pill-muted">已存 0 筆 (0 B)</span>
+          <button id="btn-standby-curtain" type="button" class="pill pill-btn" title="開啟黑屏省電待機">
+            🌙 黑屏省電待機
+          </button>
+        </div>
+      </header>
+
+      <nav class="tab-nav" role="tablist">
+        <button type="button" class="tab-btn active" data-tab="monitor" role="tab" aria-selected="true">
+          🎥 蒐證錄影
+        </button>
+        <button type="button" class="tab-btn" data-tab="review" role="tab" aria-selected="false">
+          📼 證據回顧 <span id="tab-event-count" class="count-badge">0</span>
+        </button>
+        <button type="button" class="tab-btn" data-tab="export" role="tab" aria-selected="false">
+          📄 報告與設定
+        </button>
+      </nav>
+
+      <main class="main-content">
+        <!-- TAB 1: MONITOR & RECORD -->
+        <section id="tab-monitor" class="tab-panel active">
+          <div class="card preview-card">
+            <div class="preview-wrapper">
+              <video id="camera-preview" autoplay muted playsinline hidden></video>
+              <canvas id="compositor-canvas" width="640" height="360"></canvas>
+              <div id="rec-timer-pill" class="rec-timer-pill" hidden>● REC 00:00</div>
+            </div>
+
+            <div class="preview-toolbar">
+              <button id="btn-connect-av" type="button" class="btn btn-sm btn-secondary">
+                📷 啟用實體鏡頭與麥克風
+              </button>
+              <button id="btn-switch-camera" type="button" class="btn btn-sm btn-secondary">
+                🔄 切換前/後鏡頭
+              </button>
+              <span id="av-source-badge" class="source-status">目前：模擬監視訊號（可直接測試）</span>
+            </div>
+
+            <div class="location-row">
+              <label for="location-preset-select">📍 畫面浮水印標籤</label>
+              <select id="location-preset-select">
+                <option value="廁所洗手台">廁所洗手台 (預設)</option>
+                <option value="廁所窗戶邊">廁所窗戶邊</option>
+                <option value="客廳朝向隔間牆">客廳朝向隔間牆</option>
+                <option value="__custom__">✏️ 自訂輸入其他位置...</option>
+              </select>
+              <input
+                id="location-label-input"
+                type="text"
+                maxlength="36"
+                placeholder="輸入自訂位置標籤"
+                hidden
+              />
+            </div>
+
+            <div class="mode-selector">
+              <span class="field-label">錄影存檔模式</span>
+              <div class="mode-grid">
+                <button type="button" class="mode-btn active" data-mode="continuous">
+                  <strong>全程連續錄影＋時間軸標記</strong>
+                  <small>時間連續不中斷・每分鐘約 <span class="est-mb-label">2.28</span> MB</small>
+                </button>
+                <button type="button" class="mode-btn" data-mode="event">
+                  <strong>行車記錄器式：事件觸發擷取</strong>
+                  <small>僅存巨響前10秒＋後20秒・極致省空間</small>
+                </button>
+              </div>
+            </div>
+
+            <div id="capture-status-bar" class="capture-status-bar">
+              <span id="capture-status-text">就緒：點擊「開始蒐證錄影」立即運作</span>
+              <button id="btn-finalize-clip-now" type="button" class="btn btn-sm btn-warning" hidden>
+                ⚡ 立即封裝目前觸發片段
+              </button>
+            </div>
+
+            <div class="primary-actions">
+              <button id="btn-toggle-record" type="button" class="btn btn-primary btn-lg">
+                🔴 開始蒐證錄影
+              </button>
+              <button id="btn-simulate-slam" type="button" class="btn btn-accent btn-lg">
+                💥 模擬關門巨響 (測試觸發)
+              </button>
+            </div>
+          </div>
+
+          <div class="card telemetry-card">
+            <div class="card-header-row">
+              <h2>🔊 即時音壓監測與靈敏度</h2>
+              <span id="spike-indicator" class="pill pill-ok">監測中・環境平穩</span>
+            </div>
+
+            <div class="db-stats-grid">
+              <div class="stat-box">
+                <span class="stat-label">目前音量</span>
+                <strong id="val-current-db" class="stat-value">36.0 dB</strong>
+              </div>
+              <div class="stat-box">
+                <span class="stat-label">5秒背景基準</span>
+                <strong id="val-baseline-db" class="stat-value">36.0 dB</strong>
+              </div>
+              <div class="stat-box">
+                <span class="stat-label">瞬間突增</span>
+                <strong id="val-delta-db" class="stat-value">+0.0 dB</strong>
+              </div>
+              <div class="stat-box">
+                <span class="stat-label">本場最高峰</span>
+                <strong id="val-peak-db" class="stat-value">36.0 dB</strong>
+              </div>
+            </div>
+
+            <div class="meter-bar-wrap">
+              <div id="live-db-bar" class="meter-bar-fill"></div>
+              <div id="live-threshold-marker" class="meter-threshold-marker" title="觸發門檻"></div>
+            </div>
+
+            <div class="sliders-grid">
+              <div class="slider-item">
+                <div class="slider-head">
+                  <label for="threshold-db-slider">觸發絕對門檻 (dB)</label>
+                  <span id="threshold-db-val">65 dB</span>
+                </div>
+                <input id="threshold-db-slider" type="range" min="45" max="95" step="1" value="65" />
+              </div>
+
+              <div class="slider-item">
+                <div class="slider-head">
+                  <label for="delta-db-slider">突波差值門檻 (+dB)</label>
+                  <span id="delta-db-val">+12 dB</span>
+                </div>
+                <input id="delta-db-slider" type="range" min="5" max="35" step="1" value="12" />
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header-row">
+              <h2>⚡ 本場次即時捕捉事件</h2>
+              <span id="live-event-count-label" class="muted-text">0 次巨響</span>
+            </div>
+            <div id="live-events-feed" class="live-events-feed">
+              <p class="empty-hint">錄影中若偵測到突發巨響，時間點與現場截圖將即時列於此處。</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- TAB 2: REVIEW & TIMELINE -->
+        <section id="tab-review" class="tab-panel">
+          <div class="card player-card">
+            <div class="card-header-row">
+              <h2>🎬 證據影片回顧播放器</h2>
+              <span id="player-session-meta" class="muted-text">尚未選擇場次</span>
+            </div>
+            <div class="player-frame">
+              <video id="review-video" controls playsinline></video>
+            </div>
+            <div class="timeline-wrap">
+              <div class="timeline-label-row">
+                <span>時間軸巨響標記（點擊紅點跳轉至巨響前 3 秒）</span>
+                <span id="timeline-markers-count" class="muted-text">0 個標記</span>
+              </div>
+              <div id="timeline-track" class="timeline-track">
+                <div class="timeline-empty">選擇影片後將顯示巨響標記位置</div>
+              </div>
+            </div>
+            <div class="player-actions">
+              <button id="btn-download-video" type="button" class="btn btn-primary" disabled>
+                ⬇ 下載此證據影片
+              </button>
+              <button id="btn-share-video" type="button" class="btn btn-secondary" disabled>
+                📤 分享證據影片
+              </button>
+              <button id="btn-delete-session" type="button" class="btn btn-danger" disabled>
+                🗑 刪除此錄影檔
+              </button>
+            </div>
+          </div>
+
+          <div class="review-split">
+            <div class="card">
+              <div class="card-header-row">
+                <h2>📁 已保存錄影檔案</h2>
+                <span id="sessions-count-label" class="muted-text">0 筆</span>
+              </div>
+              <div id="sessions-list" class="list-stack">
+                <p class="empty-hint">尚無錄影紀錄。</p>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header-row">
+                <h2>📌 突發巨響時間點清單</h2>
+                <span id="events-count-label" class="muted-text">0 筆</span>
+              </div>
+              <div id="events-list" class="list-stack">
+                <p class="empty-hint">尚無偵測到的巨響事件。</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- TAB 3: EXPORT & SETTINGS -->
+        <section id="tab-export" class="tab-panel">
+          <div class="card">
+            <div class="card-header-row">
+              <h2>📤 匯出噪音蒐證報告</h2>
+              <span class="muted-text">可用於管委會、報案或存證信函附件</span>
+            </div>
+            <div class="export-actions-grid">
+              <button id="btn-export-csv" type="button" class="btn btn-secondary">
+                📊 匯出 Excel CSV 明細表
+              </button>
+              <button id="btn-export-json" type="button" class="btn btn-secondary">
+                🗂 匯出 JSON 結構化資料
+              </button>
+              <button id="btn-refresh-report" type="button" class="btn btn-primary">
+                📑 更新下方正式報告預覽
+              </button>
+              <button id="btn-print-pdf" type="button" class="btn btn-accent">
+                🖨 列印 / 另存 PDF 報告 (含截圖)
+              </button>
+            </div>
+          </div>
+
+          <div id="android-protection-card" class="card">
+            <div class="card-header-row">
+              <h2>🛡 Android 背景防殺與安全保護機制</h2>
+              <span id="battery-opt-status-badge" class="pill pill-muted">偵測系統狀態中...</span>
+            </div>
+            <p class="muted-text">
+              • <strong>前景守護服務 + CPU 防休眠：</strong>僅在「錄影中」啟用（最長 10 小時安全上限），按停止或關閉 App 時立即釋放，不殘留耗電。<br />
+              • <strong>🔋 低電量自動存檔保護：</strong>未插電且電量降至 10% 以下時，將自動安全保存錄影檔並解除鎖定，防止斷電遺失證據。
+            </p>
+            <div class="protection-actions-row">
+              <button id="btn-battery-whitelist" type="button" class="btn btn-secondary">
+                🛡 一鍵加入 Android 背景防殺白名單
+              </button>
+              <span id="battery-live-badge" class="pill pill-muted">🔋 電量偵測中</span>
+            </div>
+          </div>
+
+          <div class="card settings-card">
+            <h2>⚙ 省電與檔案壓縮設定</h2>
+            <div class="settings-grid">
+              <div class="setting-field">
+                <label for="setting-resolution">影像解析度</label>
+                <select id="setting-resolution">
+                  <option value="360p">360p (640×360) — 清晰與省空間平衡</option>
+                  <option value="240p">240p (426×240) — 極致省電與最小檔案</option>
+                </select>
+              </div>
+
+              <div class="setting-field">
+                <label for="setting-fps">錄影幀率 (FPS)</label>
+                <select id="setting-fps">
+                  <option value="10">10 FPS (最省電)</option>
+                  <option value="12">12 FPS (推薦平衡)</option>
+                  <option value="15">15 FPS (較流暢)</option>
+                </select>
+              </div>
+
+              <div class="setting-field">
+                <label for="setting-bitrate">視訊位元率 (預估 <span class="est-mb-label">2.28</span> MB/分鐘)</label>
+                <select id="setting-bitrate">
+                  <option value="150000">150 kbps (極致壓縮 ≈ 1.5 MB/分)</option>
+                  <option value="250000">250 kbps (標準壓縮 ≈ 2.3 MB/分)</option>
+                  <option value="400000">400 kbps (高清晰 ≈ 3.4 MB/分)</option>
+                </select>
+              </div>
+
+              <div class="setting-field">
+                <label for="setting-auto-segment">連續錄影自動分段</label>
+                <select id="setting-auto-segment">
+                  <option value="15">每 15 分鐘自動存檔</option>
+                  <option value="30">每 30 分鐘自動存檔</option>
+                  <option value="60">每 60 分鐘自動存檔</option>
+                  <option value="0">不自動分段</option>
+                </select>
+              </div>
+
+              <div class="setting-field">
+                <label for="setting-preroll">事件模式：巨響前保留秒數</label>
+                <select id="setting-preroll">
+                  <option value="5">5 秒</option>
+                  <option value="10">10 秒 (推薦)</option>
+                  <option value="15">15 秒</option>
+                </select>
+              </div>
+
+              <div class="setting-field">
+                <label for="setting-postroll">事件模式：巨響後補錄秒數</label>
+                <select id="setting-postroll">
+                  <option value="8">8 秒 (快速測試)</option>
+                  <option value="15">15 秒</option>
+                  <option value="20">20 秒 (推薦)</option>
+                  <option value="30">30 秒</option>
+                </select>
+              </div>
+
+              <div class="setting-field">
+                <div class="slider-head">
+                  <label for="setting-calibration">分貝校準偏移量</label>
+                  <span id="setting-calibration-val">+95 dB</span>
+                </div>
+                <input id="setting-calibration" type="range" min="70" max="115" step="1" value="95" />
+                <small class="muted-text">安靜室內約 35~40 dB，可依手機麥克風靈敏度微調</small>
+              </div>
+            </div>
+
+            <div class="danger-zone">
+              <button id="btn-clear-all" type="button" class="btn btn-danger">
+                🧹 清空所有本機影片與事件紀錄
+              </button>
+            </div>
+          </div>
+
+          <div class="card report-preview-card">
+            <div id="printable-report-container"></div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div id="confirm-modal-backdrop" class="confirm-modal-backdrop" hidden role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title">
+      <div class="confirm-modal-card">
+        <h3 id="confirm-modal-title">⚠ 確認刪除？</h3>
+        <p id="confirm-modal-msg" class="confirm-modal-msg"></p>
+        <div class="confirm-modal-actions">
+          <button id="btn-confirm-cancel" type="button" class="btn btn-secondary">取消</button>
+          <button id="btn-confirm-ok" type="button" class="btn btn-danger">確定刪除</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,19 @@
+{
+  "name": "噪音記錄器",
+  "short_name": "噪音記錄器",
+  "description": "低耗電、低容量影音同步鄰居關門噪音蒐證紀錄器，支援即時時間分貝浮水印、突發巨響偵測、可調亮度省電待機與證據報告匯出。",
+  "start_url": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#090d16",
+  "theme_color": "#ef4444",
+  "lang": "zh-TW",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

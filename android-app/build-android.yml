@@ -1,0 +1,59 @@
+name: Build Android APK (噪音記錄器)
+
+on:
+  push:
+    branches: ['main']
+    paths:
+      - 'android-app/**'
+  workflow_dispatch:
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android-app
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: android-app/package-lock.json
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web bundle & sync Capacitor Android
+        run: |
+          npm run build
+          node scripts/generate-android-icons.mjs
+          npx cap sync android
+
+      - name: Build Debug APK
+        working-directory: android-app/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Copy APK artifact
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk ./噪音記錄器.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: 噪音記錄器-android-apk
+          path: android-app/噪音記錄器.apk
+          retention-days: 30

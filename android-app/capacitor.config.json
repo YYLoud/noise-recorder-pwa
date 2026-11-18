@@ -1,0 +1,9 @@
+{
+  "appId": "com.noiserecorder.evidence",
+  "appName": "噪音記錄器",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https"
+  }
+}
